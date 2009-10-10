@@ -13,6 +13,12 @@ module ActionView
   class Base
     attr_reader :assigned_instance_variables
 
+    def initialize_with_assigned_instance_variables(view_paths = [], assigns_for_first_render = {}, controller = nil)#:nodoc:
+      @assigned_instance_variables = {}
+      initialize_without_assigned_instance_variables(view_paths, assigns_for_first_render, controller)
+    end
+    alias_method_chain :initialize, :assigned_instance_variables
+
     private
       # Evaluates the local assigns and controller ivars, pushes them to the view.
       def _evaluate_assigns_and_ivars #:nodoc:
@@ -32,7 +38,6 @@ module ActionView
       end
 
       def _assign_instance_variable(key, value) #:nodoc:
-        @assigned_instance_variables ||= {} # FIXME it isn't threadsafe
         @assigned_instance_variables[key.gsub(/^@/, "").to_sym] = value
         instance_variable_set key, value
       end
@@ -47,7 +52,6 @@ module ActionView
       private
         # TODO refactoring
         # TODO local_assigns
-        # TODO yield
         def _compile_template(template)
           klass = begin
             Mustache::Rails.classify(template).constantize
@@ -62,6 +66,7 @@ module ActionView
 end
 
 class Mustache
+  # TODO include helpers
   class Rails < Mustache
     @@views_path = File.expand_path(File.join(::Rails.root, "app", "views"))
     cattr_accessor :views_path
