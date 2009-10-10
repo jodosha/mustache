@@ -59,14 +59,13 @@ module ActionView
             defined?(ApplicationView) ? ApplicationView : Mustache::Rails
           end
 
-          Class.new(klass).new(template, @view)
+          klass.new(template, @view)
         end
     end
   end
 end
 
 class Mustache
-  # TODO include helpers
   class Rails < Mustache
     @@views_path = File.expand_path(File.join(::Rails.root, "app", "views"))
     cattr_accessor :views_path
@@ -82,13 +81,18 @@ class Mustache
     end
 
     def initialize(template, view)
-      self.class.template_file = template.filename
-      @context = Context.new(self, view.assigned_instance_variables)
+      self.template = template.filename
+      @context = Context.new(view.assigned_instance_variables, self)
+    end
+
+    def template=(template)
+      template = File.read(template) unless template.is_a?(Template)
+      super
     end
   end
 
   class Context < Hash
-    def initialize(mustache, hash)
+    def initialize(hash, mustache)
       @mustache = mustache
       super()
       update(hash)
