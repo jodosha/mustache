@@ -45,13 +45,14 @@ module ActionView
       end
 
       private
+        # TODO refactoring
         # TODO local_assigns
         # TODO yield
         def _compile_template(template)
-          klass = if (klass = Mustache::Rails.classify(template)) and defined?(klass)
-            klass.constantize
-          else
-            Mustache::Rails
+          klass = begin
+            Mustache::Rails.classify(template).constantize
+          rescue
+            defined?(ApplicationView) ? ApplicationView : Mustache::Rails
           end
 
           Class.new(klass).new(template, @view)
