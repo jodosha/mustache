@@ -1,3 +1,14 @@
+# Support for Mustache in your Rails app.
+#
+#   in config/environment.rb
+#
+#     Rails::Initializer.run do |config|
+#       config.gem "mustache"
+#     end
+#
+#   in config/initializers/mustache.rb
+#
+#     require "mustache/rails"
 module ActionView
   class Base
     attr_reader :assigned_instance_variables
@@ -28,21 +39,58 @@ module ActionView
   end
 
   module TemplateHandlers
-    class Mustache < TemplateHandler
+    class MustacheHandler < TemplateHandler
       def render(template, local_assigns)
         _compile_template(template).to_html # TODO include local_assigns
       end
 
       private
+        # TODO local_assigns
+        # TODO yield
         def _compile_template(template)
-          mustache = Class.new(::Mustache)
-          mustache.template_file = template.filename
-          mustache.attr_accessor_with_default :context, @view.assigned_instance_variables
-          mustache.new
+          klass = if (klass = Mustache::Rails.classify(template)) and defined?(klass)
+            klass.constantize
+          else
+            Mustache::Rails
+          end
+
+          Class.new(klass).new(template, @view)
         end
     end
   end
 end
 
-ActionController::Base.view_paths = File.expand_path(File.join(Rails.root, "app", "templates"))
-ActionView::Template.register_default_template_handler :mustache, ActionView::TemplateHandlers::Mustache
+class Mustache
+  class Rails < Mustache
+    @@views_path = File.expand_path(File.join(::Rails.root, "app", "views"))
+    cattr_accessor :views_path
+
+    @@templates_path = File.expand_path(File.join(::Rails.root, "app", "templates"))
+    cattr_accessor :templates_path
+
+    @@class_name_suffix = "View".freeze
+    cattr_accessor :class_name_suffix
+
+    def self.classify(template)
+      "#{template.path_without_format_and_extension.classify}#{class_name_suffix}"
+    end
+
+    def initialize(template, view)
+      self.class.template_file = template.filename
+      @context = Context.new(self, view.assigned_instance_variables)
+    end
+  end
+
+  class Context < Hash
+    def initialize(mustache, hash)
+      @mustache = mustache
+      super()
+      update(hash)
+    end
+  end
+end
+
+# TODO made these paths configurable by users through an initializer
+ActiveSupport::Dependencies.load_paths << Mustache::Rails.views_path
+ActionController::Base.view_paths       = Mustache::Rails.templates_path
+ActionView::Template.register_default_template_handler :mustache, ActionView::TemplateHandlers::MustacheHandler
