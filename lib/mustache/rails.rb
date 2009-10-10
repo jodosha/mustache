@@ -1,14 +1,3 @@
-# Support for Mustache in your Rails app.
-#
-#   in config/environment.rb
-#
-#     Rails::Initializer.run do |config|
-#       config.gem "mustache"
-#     end
-#
-#   in config/initializers/mustache.rb
-#
-#     require "mustache/rails"
 module ActionView
   class Base
     attr_reader :assigned_instance_variables
@@ -31,7 +20,7 @@ module ActionView
         end
       end
 
-      def _assign_instance_variable(key, value)
+      def _assign_instance_variable(key, value) #:nodoc:
         @assigned_instance_variables ||= {} # FIXME it isn't threadsafe
         @assigned_instance_variables[key.gsub(/^@/, "").to_sym] = value
         instance_variable_set key, value
@@ -55,4 +44,5 @@ module ActionView
   end
 end
 
-ActionView::Template.register_default_template_handler :erb, ActionView::TemplateHandlers::Mustache
+ActionController::Base.view_paths = File.expand_path(File.join(Rails.root, "app", "templates"))
+ActionView::Template.register_default_template_handler :mustache, ActionView::TemplateHandlers::Mustache
