@@ -1,10 +1,8 @@
 Mustache
 =========
 
-Inspired by [ctemplate](http://code.google.com/p/google-ctemplate/)
-and
-[et](http://www.ivan.fomichev.name/2008/05/erlang-template-engine-prototype.html),
-Mustache is a framework-agnostic way to render logic-free views.
+Inspired by [ctemplate][1] and [et][2], Mustache is a
+framework-agnostic way to render logic-free views.
 
 As ctemplates says, "It emphasizes separating logic from presentation:
 it is impossible to embed application logic in this template language."
@@ -41,6 +39,13 @@ in my HTML, or putting JavaScript in my HTML.
 Usage
 -----
 
+Quick example:
+
+    >> require 'mustache'
+    => true
+    >> Mustache.render("Hello {{planet}}", :planet => "World!")
+    => "Hello World!"
+
 We've got an `examples` folder but here's the canonical one:
 
     class Simple < Mustache
@@ -75,7 +80,7 @@ Now let's write the template:
 This template references our view methods. To bring it all together,
 here's the code to render actual HTML;
 
-    Simple.new.to_html
+    Simple.render
 
 Which returns the following:
 
@@ -139,6 +144,24 @@ And this view code:
 When rendered, our view will contain a list of all repository names in
 the database.
 
+As a convenience, if a section returns a hash (as opposed to an array
+or a boolean) it will be treated as a single item array.
+
+With the above template, we could use this Ruby code for a single
+iteration:
+
+    def repo
+      { :name => Repository.first.to_s }
+    end
+
+This would be treated by Mustache as functionally equivalent to the
+following:
+
+    def repo
+      [ { :name => Repository.first.to_s } ]
+    end
+
+
 ### Comments
 
 Comments begin with a bang and are ignored. The following template:
@@ -160,24 +183,49 @@ In this way partials can reference variables or sections the calling
 view defines.
 
 
+### Set Delimiter
+
+Set Delimiter tags start with an equal sign and change the tag
+delimiters from {{ and }} to custom strings.
+
+Consider the following contrived example:
+
+    * {{ default_tags }}
+    {{=<% %>=}}
+    * <% erb_style_tags %>
+    <%={{ }}=%>
+    * {{ default_tags_again }}
+
+Here we have a list with three items. The first item uses the default
+tag style, the second uses erb style as defined by the Set Delimiter
+tag, and the third returns to the default style after yet another Set
+Delimiter declaration.
+
+According to [ctemplates][3], this "is useful for languages like TeX, where
+double-braces may occur in the text and are awkward to use for
+markup."
+
+Custom delimiters may not contain whitespace or the equals sign.
+
+
 Dict-Style Views
 ----------------
 
 ctemplate and friends want you to hand a dictionary to the template
-processor. Naturally Mustache supports a similar concept. Feel free
-to mix the class-based and this more procedural style at your leisure.
+processor. Mustache supports a similar concept. Feel free to mix the
+class-based and this more procedural style at your leisure.
 
-Given this template (dict.html):
+Given this template (winner.html):
 
     Hello {{name}}
     You have just won ${{value}}!
 
 We can fill in the values at will:
 
-    dict = Dict.new
-    dict[:name] = 'George'
-    dict[:value] = 100
-    dict.to_html
+    view = Winner.new
+    view[:name] = 'George'
+    view[:value] = 100
+    view.render
 
 Which returns:
 
@@ -186,8 +234,8 @@ Which returns:
 
 We can re-use the same object, too:
 
-    dict[:name] = 'Tony'
-    dict.to_html
+    view[:name] = 'Tony'
+    view.render
     Hello Tony
     You have just won $100!
 
@@ -201,11 +249,11 @@ follows the classic Ruby naming convention.
 
     TemplatePartial => ./template_partial.html
 
-You can set the search path using `Mustache.path`. It can be set on a
+You can set the search path using `Mustache.template_path`. It can be set on a
 class by class basis:
 
     class Simple < Mustache
-      self.path = File.dirname(__FILE__)
+      self.template_path = File.dirname(__FILE__)
       ... etc ...
     end
 
@@ -217,11 +265,18 @@ If you want to just change what template is used you can set
 
     Simple.template_file = './blah.html'
 
-You can also go ahead and set the template directly:
+Mustache also allows you to define the extension it'll use.
+
+    Simple.template_extension = 'xml'
+
+Given all other defaults, the above line will cause Mustache to look
+for './blah.xml'
+
+Feel free to set the template directly:
 
     Simple.template = 'Hi {{person}}!'
 
-You can also set a different template for only a single instance:
+Or set a different template for a single instance:
 
     Simple.new.template = 'Hi {{person}}!'
 
@@ -292,9 +347,28 @@ normal class.
 
 Now:
 
-    Simple.new(request.ssl?).to_html
+    Simple.new(request.ssl?).render
 
 Convoluted but you get the idea.
+
+
+Sinatra
+-------
+
+Mustache ships with Sinatra integration. Please see
+`lib/mustache/sinatra.rb` or
+<http://defunkt.github.com/mustache/classes/Mustache/Sinatra.html> for
+complete documentation.
+
+An example Sinatra application is also provided:
+<http://github.com/defunkt/mustache-sinatra-example>
+
+
+Vim
+---
+
+Thanks to [Juvenn Woo](http://github.com/juvenn) for mustache.vim. It
+is included under the contrib/ directory.
 
 
 Installation
@@ -327,3 +401,7 @@ Meta
 * Test: <http://runcoderun.com/defunkt/mustache>
 * Gems: <http://gemcutter.org/gems/mustache>
 * Boss: Chris Wanstrath :: <http://github.com/defunkt>
+
+[1]: http://code.google.com/p/google-ctemplate/
+[2]: http://www.ivan.fomichev.name/2008/05/erlang-template-engine-prototype.html
+[3]: http://google-ctemplate.googlecode.com/svn/trunk/doc/howto.html
